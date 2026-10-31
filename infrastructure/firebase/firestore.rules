@@ -1,0 +1,91 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function verified() { return signedIn() && request.auth.token.email_verified == true; }
+    function userRecord() { return get(/databases/$(database)/documents/users/$(request.auth.uid)); }
+    function paid() { return verified() && userRecord().data.membershipStatus == 'active'; }
+    function administrator() { return signedIn() && request.auth.token.admin == true; }
+
+    match /listings/{listingId} {
+      allow read: if resource.data.status == 'active' || (signedIn() && resource.data.ownerUid == request.auth.uid) || administrator();
+      allow create: if paid() && request.resource.data.ownerUid == request.auth.uid
+        && request.resource.data.status == 'pending_review'
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.quantity is int && request.resource.data.quantity >= 0
+        && request.resource.data.minimumOrder is int && request.resource.data.minimumOrder > 0
+        && request.resource.data.pricePerUnit is number && request.resource.data.pricePerUnit >= 0
+        && request.resource.data.currency == 'TRY'
+        && request.resource.data.photos is list && request.resource.data.photos.size() <= 8
+        && request.resource.data.keys().hasOnly(['ownerUid', 'sellerUid', 'title', 'category', 'dimensions', 'condition', 'quality', 'description', 'photos', 'quantity', 'minimumOrder', 'pricePerUnit', 'currency', 'vatIncluded', 'city', 'district', 'delivery', 'deliveryTime', 'status', 'createdAt', 'updatedAt']);
+      allow update: if (paid() && resource.data.ownerUid == request.auth.uid
+        && request.resource.data.ownerUid == resource.data.ownerUid
+        && request.resource.data.status in ['pending_review', 'paused']
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['title', 'category', 'dimensions', 'condition', 'quality', 'description', 'photos', 'quantity', 'minimumOrder', 'pricePerUnit', 'currency', 'vatIncluded', 'city', 'district', 'delivery', 'deliveryTime', 'status', 'updatedAt'])) || administrator();
+      allow delete: if false;
+    }
+
+    match /users/{uid} {
+      allow read: if (signedIn() && request.auth.uid == uid) || administrator();
+      allow create, update, delete: if false;
+    }
+
+    match /sellerProfiles/{uid} {
+      allow read: if paid() || (signedIn() && request.auth.uid == uid) || administrator();
+      allow create: if paid() && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['companyName', 'description', 'city', 'district', 'logoUrl', 'phone', 'email', 'address', 'taxOffice', 'taxNumber', 'contactName']);
+      allow update: if paid() && request.auth.uid == uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['companyName', 'description', 'city', 'district', 'logoUrl', 'phone', 'email', 'address', 'taxOffice', 'taxNumber', 'contactName']);
+      allow delete: if false;
+    }
+
+    match /conversations/{conversationId} {
+      allow read: if paid() && request.auth.uid in resource.data.participantUids;
+      allow create: if paid() && request.auth.uid in request.resource.data.participantUids
+        && request.resource.data.participantUids.size() == 2
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.keys().hasOnly(['participantUids', 'createdBy', 'listingId', 'createdAt'])
+        && get(/databases/$(database)/documents/listings/$(request.resource.data.listingId)).data.status == 'active'
+        && get(/databases/$(database)/documents/listings/$(request.resource.data.listingId)).data.ownerUid in request.resource.data.participantUids;
+      allow update, delete: if false;
+      match /messages/{messageId} {
+        function participant() {
+          let conversation = get(/databases/$(database)/documents/conversations/$(conversationId));
+          return paid() && request.auth.uid in conversation.data.participantUids;
+        }
+        allow read: if participant();
+        allow create: if participant() && request.resource.data.senderUid == request.auth.uid
+          && request.resource.data.keys().hasOnly(['senderUid', 'body', 'createdAt'])
+          && request.resource.data.body is string && request.resource.data.body.size() > 0
+          && request.resource.data.body.size() <= 5000;
+        allow update, delete: if false;
+      }
+    }
+
+    match /campaigns/{campaignId} {
+      allow read: if resource.data.status == 'active';
+      allow write: if administrator();
+    }
+    match /adSlots/{slotId} {
+      allow read: if resource.data.enabled == true;
+      allow write: if administrator();
+    }
+    match /payments/{paymentId} {
+      allow read: if administrator() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow write: if false;
+    }
+    match /boostPurchases/{boostId} {
+      allow read: if administrator() || (signedIn() && resource.data.ownerUid == request.auth.uid);
+      allow write: if false;
+    }
+    match /boostPackages/{packageId} {
+      allow read: if resource.data.status == 'active';
+      allow write: if administrator();
+    }
+    match /advertisingPackages/{packageId} {
+      allow read: if resource.data.status == 'active';
+      allow write: if administrator();
+    }
+    match /{document=**} { allow read, write: if false; }
+  }
+}

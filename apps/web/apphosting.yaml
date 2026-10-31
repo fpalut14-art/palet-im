@@ -1,0 +1,7 @@
+# Firebase App Hosting backend root should be set to apps/web in Firebase Console.
+# Public Firebase app configuration is provided as build/runtime environment values
+# in the App Hosting backend settings. Payment secrets belong in Secret Manager.
+runConfig:
+  minInstances: 0
+  maxInstances: 10
+  concurrency: 80

@@ -1,0 +1,19 @@
+{
+  "name": "paletcim",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@10.12.1",
+  "engines": { "node": ">=22.13.0" },
+  "scripts": {
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "lint": "turbo lint",
+    "typecheck": "turbo typecheck",
+    "dev:web": "pnpm --filter @paletcim/web dev",
+    "dev:api": "pnpm --filter @paletcim/api start:dev",
+    "dev:mobile": "pnpm --filter @paletcim/mobile start",
+    "firebase:emulators": "pnpm dlx firebase-tools@15.34.2 emulators:start",
+    "firebase:deploy:rules": "pnpm dlx firebase-tools@15.34.2 deploy --only firestore:rules,firestore:indexes,storage"
+  },
+  "devDependencies": { "turbo": "2.5.4", "typescript": "5.8.3" }
+}

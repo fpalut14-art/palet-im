@@ -1,0 +1,24 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    function signedIn() { return request.auth != null; }
+    function paid() {
+      return signedIn() && request.auth.token.email_verified == true
+        && firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.membershipStatus == 'active';
+    }
+    match /listingPhotos/{listingId}/{fileName} {
+      function listing() { return firestore.get(/databases/(default)/documents/listings/$(listingId)); }
+      allow read: if listing().data.status == 'active' || (signedIn() && listing().data.ownerUid == request.auth.uid);
+      allow write: if paid() && listing().data.ownerUid == request.auth.uid
+        && listing().data.status in ['pending_review', 'paused']
+        && request.resource.size < 8 * 1024 * 1024
+        && request.resource.contentType.matches('image/(jpeg|png|webp)');
+    }
+    match /sellerProfiles/{uid}/{fileName} {
+      allow read: if paid() || (signedIn() && request.auth.uid == uid);
+      allow write: if paid() && request.auth.uid == uid && request.resource.size < 5 * 1024 * 1024
+        && request.resource.contentType.matches('image/(jpeg|png|webp)');
+    }
+    match /{allPaths=**} { allow read, write: if false; }
+  }
+}

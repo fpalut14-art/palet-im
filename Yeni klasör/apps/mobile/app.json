@@ -1,0 +1,8 @@
+{
+  "expo": {
+    "name": "PALETÇİM", "slug": "paletcim", "scheme": "paletcim", "version": "0.1.0", "orientation": "portrait", "userInterfaceStyle": "light",
+    "plugins": ["expo-router"], "experiments": { "typedRoutes": true },
+    "ios": { "supportsTablet": true, "bundleIdentifier": "com.paletcim.app" },
+    "android": { "package": "com.paletcim.app", "edgeToEdgeEnabled": true }
+  }
+}

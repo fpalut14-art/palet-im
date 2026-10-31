@@ -1,0 +1,6 @@
+{
+  "functions": [ { "source": "infrastructure/functions", "codebase": "default", "predeploy": [ "pnpm --filter @paletcim/functions build" ] } ],
+  "firestore": { "rules": "infrastructure/firebase/firestore.rules", "indexes": "infrastructure/firebase/firestore.indexes.json" },
+  "storage": { "rules": "infrastructure/firebase/storage.rules" },
+  "emulators": { "auth": { "port": 9099 }, "firestore": { "port": 8080 }, "storage": { "port": 9199 }, "functions": { "port": 5001 }, "ui": { "enabled": true, "port": 4001 } }
+}
